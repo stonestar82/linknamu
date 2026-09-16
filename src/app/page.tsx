@@ -1,5 +1,9 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import LinkCard from "@/components/LinkCard";
 import ProfileAvatar from "@/components/ProfileAvatar";
+import { links } from "@/lib/links";
 
 const profile = {
   name: "박갑수",
@@ -7,13 +11,36 @@ const profile = {
   avatarUrl: "https://placehold.co/150x150/orange/white.png",
 };
 
-const links = [
-  { label: "깃허브", href: "https://github.com/your-id", icon: "🐙" },
-  { label: "블로그", href: "https://your-blog.example.com", icon: "✍" },
-  { label: "이메일", href: "mailto:darakutensi2@gmail.com", icon: "📬" },
-];
-
 export default function Home() {
+  const [clickCounts, setClickCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/links/clicks")
+      .then((res) => res.json())
+      .then((data: { counts: Record<string, number> }) => {
+        if (!cancelled) {
+          setClickCounts(data.counts);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleLinkClick = (id: string) => {
+    setClickCounts((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+
+    fetch("/api/links/clicks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    }).catch(() => {});
+  };
+
   return (
     <div className="flex flex-1 items-center justify-center bg-gradient-to-b from-amber-50 via-orange-50 to-orange-100 px-6 py-20 dark:from-neutral-950 dark:via-stone-950 dark:to-neutral-900 sm:py-28">
       <main className="flex w-full max-w-sm flex-col items-center gap-12">
@@ -31,10 +58,12 @@ export default function Home() {
         <div className="flex w-full flex-col gap-4">
           {links.map((link) => (
             <LinkCard
-              key={link.label}
+              key={link.id}
               href={link.href}
               label={link.label}
               icon={link.icon}
+              clickCount={clickCounts[link.id] ?? 0}
+              onClick={() => handleLinkClick(link.id)}
             />
           ))}
         </div>
